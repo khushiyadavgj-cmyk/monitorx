@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MonitorX - Real-Time Cloud Monitoring Platform</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background: #0f172a;
+            color: #f8fafc;
+            padding: 30px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #38bdf8;
+        }
+
+        .header p {
+            color: #94a3b8;
+            font-size: 15px;
+            margin-top: 4px;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 10px;
+        }
+
+        /* Alert Banner */
+        .alert-banner {
+            padding: 14px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .banner-ok {
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .banner-warning {
+            background: rgba(234, 179, 8, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(234, 179, 8, 0.4);
+            animation: pulse-warn 2s infinite;
+        }
+
+        .banner-critical {
+            background: rgba(239, 68, 68, 0.18);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+            animation: pulse-crit 1.5s infinite;
+        }
+
+        @keyframes pulse-warn {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(234, 179, 8, 0.4); }
+            50% { box-shadow: 0 0 15px 2px rgba(234, 179, 8, 0.3); }
+        }
+
+        @keyframes pulse-crit {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+            50% { box-shadow: 0 0 20px 4px rgba(239, 68, 68, 0.4); }
+        }
+
+        /* Metric Cards Grid */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 18px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+        }
+
+        .card.card-alert {
+            border-color: #ef4444;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+        }
+
+        .card h2 {
+            font-size: 13px;
+            color: #94a3b8;
+            font-weight: 600;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .value {
+            font-size: 26px;
+            font-weight: 700;
+            color: #f8fafc;
+        }
+
+        .status {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .online {
+            color: #4ade80;
+        }
+
+        .warning {
+            color: #facc15;
+        }
+
+        .critical {
+            color: #f87171;
+        }
+
+        /* Section Container */
+        .section-card {
+            background: #1e293b;
+            padding: 22px;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+            margin-bottom: 25px;
+        }
+
+        .section-card h2 {
+            margin-bottom: 18px;
+            font-size: 18px;
+            font-weight: 600;
+            color: #38bdf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Two Columns */
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 900px) {
+            .two-col-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Tables */
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .custom-table th {
+            color: #94a3b8;
+            padding: 10px 14px;
+            border-bottom: 1px solid #334155;
+            font-weight: 600;
+        }
+
+        .custom-table td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #273549;
+            color: #e2e8f0;
+        }
+
+        .custom-table tr:hover td {
+            background: #273549;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-running {
+            background: rgba(74, 222, 128, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .badge-stopped {
+            background: rgba(248, 113, 113, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .badge-warn {
+            background: rgba(250, 204, 21, 0.15);
+            color: #facc15;
+            border: 1px solid rgba(250, 204, 21, 0.3);
+        }
+
+        .badge-crit {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .no-data {
+            padding: 20px;
+            text-align: center;
+            color: #94a3b8;
+            font-style: italic;
+        }
+
+        /* Charts */
+        .charts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 230px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <div>
+            <h1>🖥️ MonitorX</h1>
+            <p>Real-Time Cloud & System Monitoring Platform</p>
+        </div>
+        <div class="header-badges">
+            <div id="ws-badge" class="badge badge-warn">⚡ Connecting...</div>
+            <div id="server-badge" class="badge badge-running">● System Live</div>
+        </div>
+    </div>
+
+    <!-- REAL-TIME ALERT BANNER -->
+    <div id="alert-banner" class="alert-banner banner-ok">
+        <span id="banner-text">🟢 All Systems Operational — No Active Alerts</span>
+        <span id="banner-time">Real-Time</span>
+    </div>
+
+    <!-- METRIC CARDS -->
+    <div class="metrics">
+        <div class="card" id="card-cpu">
+            <h2>🖥️ CPU Usage</h2>
+            <div class="value" id="cpu">--%</div>
+            <div class="status" id="cpu-status">Streaming...</div>
+        </div>
+
+        <div class="card" id="card-memory">
+            <h2>🧠 Memory Usage</h2>
+            <div class="value" id="memory">--%</div>
+            <div class="status" id="memory-status">Streaming...</div>
+        </div>
+
+        <div class="card" id="card-disk">
+            <h2>💾 Disk Usage</h2>
+            <div class="value" id="disk">--%</div>
+            <div class="status" id="disk-status">Streaming...</div>
+        </div>
+
+        <div class="card">
+            <h2>🌐 Network I/O</h2>
+            <div class="value" id="network">-- MB</div>
+            <div class="status online" id="network-status">🟢 Connected</div>
+        </div>
+
+        <div class="card">
+            <h2>🐳 Docker</h2>
+            <div class="value" id="docker-count">--</div>
+            <div class="status" id="docker-status">Detecting...</div>
+        </div>
+
+        <div class="card">
+            <h2>⏱️ Uptime</h2>
+            <div class="value" id="uptime">--:--:--</div>
+            <div class="status online">🟢 Online</div>
+        </div>
+    </div>
+
+    <!-- TOP PROCESSES (TASK MANAGER) -->
+    <div class="section-card">
+        <h2>⚡ Top Resource-Consuming Processes</h2>
+        <table class="custom-table">
+            <thead>
+                <tr>
+                    <th>PID</th>
+                    <th>Process Name</th>
+                    <th>CPU %</th>
+                    <th>Memory %</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="processes-tbody">
+                <tr>
+                    <td colspan="5" class="no-data">Reading running processes...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DOCKER CONTAINERS & ALERT LOGS (2 COLUMNS) -->
+    <div class="two-col-grid">
+        <!-- DOCKER CONTAINERS -->
+        <div class="section-card">
+            <h2>🐳 Docker Containers</h2>
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="docker-tbody">
+                    <tr>
+                        <td colspan="3" class="no-data">Scanning Docker containers...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ALERTS & EVENTS CENTER -->
+        <div class="section-card">
+            <h2>🚨 Alerts & Incident Log</h2>
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Type</th>
+                        <th>Severity</th>
+                        <th>Event Message</th>
+                    </tr>
+                </thead>
+                <tbody id="alerts-tbody">
+                    <tr>
+                        <td colspan="4" class="no-data">No recent alert events detected.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- HISTORICAL CHARTS -->
+    <div class="charts">
+        <div class="section-card">
+            <h2>📈 CPU Usage History</h2>
+            <div class="chart-container">
+                <canvas id="cpuChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <h2>📊 Memory Usage History</h2>
+            <div class="chart-container">
+                <canvas id="memoryChart"></canvas>
+            </div>
+        </div>
+
+        <div class="section-card">
+            <h2>💾 Disk Usage History</h2>
+            <div class="chart-container">
+                <canvas id="diskChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const maxDataPoints = 30;
+        const labels = [];
+        const cpuData = [];
+        const memoryData = [];
+        const diskData = [];
+
+        function createChartConfig(label, data, color) {
+            return {
+                type: "line",
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + "22",
+                        fill: true,
+                        tension: 0.35,
+                        borderWidth: 2,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 300 }, // Smooth sub-second animations
+                    scales: {
+                        y: { min: 0, max: 100, grid: { color: "#334155" }, ticks: { color: "#94a3b8" } },
+                        x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } }
+                    },
+                    plugins: {
+                        legend: { labels: { color: "#f8fafc" } }
+                    }
+                }
+            };
+        }
+
+        const cpuChart = new Chart(document.getElementById("cpuChart"), createChartConfig("CPU %", cpuData, "#38bdf8"));
+        const memoryChart = new Chart(document.getElementById("memoryChart"), createChartConfig("Memory %", memoryData, "#a855f7"));
+        const diskChart = new Chart(document.getElementById("diskChart"), createChartConfig("Disk %", diskData, "#ec4899"));
+
+        function renderMetrics(data) {
+            // 1. Metric values
+            document.getElementById("cpu").textContent = data.cpu_percent.toFixed(1) + "%";
+            document.getElementById("memory").textContent = data.memory_percent.toFixed(1) + "%";
+            document.getElementById("disk").textContent = data.disk_percent.toFixed(1) + "%";
+
+            const networkMB = (data.bytes_received + data.bytes_sent) / (1024 * 1024);
+            document.getElementById("network").textContent = networkMB.toFixed(1) + " MB";
+
+            const uptime = data.uptime_seconds;
+            const hours = Math.floor(uptime / 3600);
+            const minutes = Math.floor((uptime % 3600) / 60);
+            const seconds = uptime % 60;
+            document.getElementById("uptime").textContent = `${hours}h ${minutes}m ${seconds}s`;
+
+            // 2. Metric status styling
+            document.getElementById("cpu-status").textContent = data.cpu_percent > 80 ? "⚠️ High Usage" : "🟢 Healthy";
+            document.getElementById("cpu-status").className = data.cpu_percent > 80 ? "status warning" : "status online";
+            document.getElementById("card-cpu").classList.toggle("card-alert", data.cpu_percent > 80);
+
+            document.getElementById("memory-status").textContent = data.memory_percent > 80 ? "⚠️ High Usage" : "🟢 Healthy";
+            document.getElementById("memory-status").className = data.memory_percent > 80 ? "status warning" : "status online";
+            document.getElementById("card-memory").classList.toggle("card-alert", data.memory_percent > 80);
+
+            document.getElementById("disk-status").textContent = data.disk_percent > 85 ? "⚠️ High Usage" : "🟢 Healthy";
+            document.getElementById("disk-status").className = data.disk_percent > 85 ? "status warning" : "status online";
+            document.getElementById("card-disk").classList.toggle("card-alert", data.disk_percent > 85);
+
+            // 3. Top Processes Table
+            const procTbody = document.getElementById("processes-tbody");
+            if (data.processes && data.processes.length > 0) {
+                procTbody.innerHTML = data.processes.map(p => `
+                    <tr>
+                        <td><code>${p.pid}</code></td>
+                        <td><strong>${p.name}</strong></td>
+                        <td style="color:${p.cpu_percent > 20 ? '#facc15' : '#e2e8f0'}">${p.cpu_percent.toFixed(1)}%</td>
+                        <td>${p.memory_percent.toFixed(1)}%</td>
+                        <td><span class="badge badge-running">● ${p.status}</span></td>
+                    </tr>
+                `).join("");
+            } else {
+                procTbody.innerHTML = `<tr><td colspan="5" class="no-data">No active processes detected.</td></tr>`;
+            }
+
+            // 4. Alerts Banner & Log
+            const banner = document.getElementById("alert-banner");
+            const bannerText = document.getElementById("banner-text");
+            const bannerTime = document.getElementById("banner-time");
+
+            if (data.alerts && data.alerts.length > 0) {
+                const hasCrit = data.alerts.some(a => a.level === "critical");
+                banner.className = `alert-banner ${hasCrit ? "banner-critical" : "banner-warning"}`;
+                bannerText.textContent = `🚨 Active Alert: ${data.alerts[0].message}`;
+                bannerTime.textContent = data.alerts[0].time;
+            } else {
+                banner.className = "alert-banner banner-ok";
+                bannerText.textContent = "🟢 All Systems Operational — No Active Alerts";
+                bannerTime.textContent = "Real-Time";
+            }
+
+            const alertsTbody = document.getElementById("alerts-tbody");
+            if (data.alert_history && data.alert_history.length > 0) {
+                alertsTbody.innerHTML = data.alert_history.map(a => {
+                    const badgeClass = a.level === "critical" ? "badge-crit" : "badge-warn";
+                    return `
+                        <tr>
+                            <td><code>${a.time}</code></td>
+                            <td><strong>${a.type}</strong></td>
+                            <td><span class="badge ${badgeClass}">${a.level.toUpperCase()}</span></td>
+                            <td>${a.message}</td>
+                        </tr>
+                    `;
+                }).join("");
+            } else {
+                alertsTbody.innerHTML = `<tr><td colspan="4" class="no-data">No recent alert events detected.</td></tr>`;
+            }
+
+            // 5. Docker Section
+            if (data.docker && data.docker.available) {
+                document.getElementById("docker-count").textContent = `${data.docker.running} / ${data.docker.total}`;
+                document.getElementById("docker-status").textContent = `🟢 ${data.docker.running} Running`;
+                document.getElementById("docker-status").className = "status online";
+
+                const tbody = document.getElementById("docker-tbody");
+                if (data.docker.containers.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="3" class="no-data">No Docker containers found.</td></tr>`;
+                } else {
+                    tbody.innerHTML = data.docker.containers.map(c => {
+                        const isRunning = c.status === "running";
+                        const badgeClass = isRunning ? "badge-running" : "badge-stopped";
+                        const dot = isRunning ? "🟢" : "⚪";
+                        return `
+                            <tr>
+                                <td><code>${c.id}</code></td>
+                                <td><strong>${c.name}</strong><br><small style="color:#64748b">${c.image}</small></td>
+                                <td><span class="badge ${badgeClass}">${dot} ${c.status}</span></td>
+                            </tr>
+                        `;
+                    }).join("");
+                }
+            } else {
+                document.getElementById("docker-count").textContent = "Offline";
+                document.getElementById("docker-status").textContent = "⚪ Daemon Inactive";
+                document.getElementById("docker-tbody").innerHTML = `
+                    <tr><td colspan="3" class="no-data">⚠️ Docker Desktop is not running.</td></tr>
+                `;
+            }
+
+            // 6. Update charts
+            const currentTime = new Date().toLocaleTimeString();
+            labels.push(currentTime);
+            cpuData.push(data.cpu_percent);
+            memoryData.push(data.memory_percent);
+            diskData.push(data.disk_percent);
+
+            if (labels.length > maxDataPoints) {
+                labels.shift();
+                cpuData.shift();
+                memoryData.shift();
+                diskData.shift();
+            }
+
+            cpuChart.update();
+            memoryChart.update();
+            diskChart.update();
+        }
+
+        // ================= REAL-TIME STREAMING & FALLBACK ================= //
+        let isUsingFallback = false;
+
+        async function fetchMetricsHTTP() {
+            try {
+                const response = await fetch("/metrics");
+                const data = await response.json();
+                renderMetrics(data);
+            } catch (err) {
+                console.error("HTTP Fetch Error:", err);
+            }
+        }
+
+        function startHTTPFallback() {
+            if (isUsingFallback) return;
+            isUsingFallback = true;
+            const wsBadge = document.getElementById("ws-badge");
+            if (wsBadge) {
+                wsBadge.textContent = "● Live (HTTP 2s)";
+                wsBadge.className = "badge badge-running";
+            }
+            fetchMetricsHTTP();
+            setInterval(fetchMetricsHTTP, 2000);
+        }
+
+        function connectWebSocket() {
+            try {
+                const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+                const wsUrl = `${wsProtocol}//${window.location.host}/ws/metrics`;
+                const ws = new WebSocket(wsUrl);
+                const wsBadge = document.getElementById("ws-badge");
+
+                let receivedMessage = false;
+
+                ws.onopen = () => {
+                    if (wsBadge) {
+                        wsBadge.textContent = "⚡ WebSocket Live (1s)";
+                        wsBadge.className = "badge badge-running";
+                    }
+                };
+
+                ws.onmessage = (event) => {
+                    receivedMessage = true;
+                    const data = JSON.parse(event.data);
+                    renderMetrics(data);
+                };
+
+                ws.onclose = () => {
+                    if (!receivedMessage) {
+                        // If WebSocket failed on initial connect, fallback to HTTP polling
+                        startHTTPFallback();
+                    } else {
+                        if (wsBadge) {
+                            wsBadge.textContent = "⚠️ Reconnecting...";
+                            wsBadge.className = "badge badge-warn";
+                        }
+                        setTimeout(connectWebSocket, 3000);
+                    }
+                };
+
+                ws.onerror = () => {
+                    ws.close();
+                };
+            } catch (e) {
+                startHTTPFallback();
+            }
+        }
+
+        // Initial connection
+        connectWebSocket();
+    </script>
+</body>
+
+</html>

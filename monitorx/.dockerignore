@@ -1,0 +1,20 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python cache & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Git & IDE configs
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# OS specific files
+.DS_Store
+Thumbs.db

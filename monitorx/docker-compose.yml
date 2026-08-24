@@ -1,0 +1,11 @@
+services:
+  monitorx:
+    build: .
+    container_name: monitorx
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+     - /var/run/docker.sock:/var/run/docker.sock
